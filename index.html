@@ -208,6 +208,58 @@
       margin-top: 16px;
     }
 
+    /* ── 安装横幅 ── */
+    .install-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #1a1025;
+      border: 1px solid #2d1f3d;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin: 0 14px 12px;
+      animation: slideIn 0.3s ease;
+    }
+    .install-banner-text {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .install-banner-icon {
+      font-size: 1.5rem;
+    }
+    .install-btn {
+      flex-shrink: 0;
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: none;
+      background: var(--gradient-primary);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      box-shadow: 0 2px 12px rgba(124,58,237,0.4);
+    }
+    .install-btn:active { transform: scale(0.95); opacity: 0.9; }
+    .install-close {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: #999;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .install-close:active { background: rgba(255,255,255,0.15); color: #fff; }
+
     /* ── 备注 ── */
     .note-area { margin-top: 12px; }
     .note-input {
@@ -530,6 +582,14 @@
   </style>
 </head>
 <body>
+
+<!-- 安装横幅 -->
+<div class="install-banner hidden" id="installBanner">
+  <span class="install-banner-icon">📲</span>
+  <span class="install-banner-text" id="installBannerText">安装到手机桌面，像App一样使用</span>
+  <button class="install-btn" id="installBtn">一键安装</button>
+  <button class="install-close" id="installClose">✕</button>
+</div>
 
 <!-- 顶部区域 -->
 <div class="header">
@@ -1012,9 +1072,146 @@ function init() {
   });
 
   updateStats();
+
+  // PWA 安装按钮
+  document.getElementById('installBtn').addEventListener('click', handleInstall);
+  document.getElementById('installClose').addEventListener('click', () => {
+    document.getElementById('installBanner').classList.add('hidden');
+    if (!isLocalFile) localStorage.setItem('install_banner_closed', '1');
+  });
+
+  // 如果已经安装了（独立模式），隐藏安装横幅
+  if (isStandalone()) {
+    document.getElementById('installBanner').classList.add('hidden');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── PWA 安装逻辑 ──
+let deferredPrompt = null;
+const isLocalFile = window.location.protocol === 'file:';
+const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+
+// 监听原生安装事件（Chrome/Edge 等，满足条件才触发）
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  updateInstallBanner();
+});
+
+// 监听安装完成
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  document.getElementById('installBanner').classList.add('hidden');
+  showToast('✅ 安装成功！');
+});
+
+// 检查是否已经在独立模式（已安装的PWA）
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || navigator.standalone
+    || document.referrer.includes('android-app://');
+}
+
+// 核心：更新安装横幅的显示和文字
+function updateInstallBanner() {
+  const banner = document.getElementById('installBanner');
+  const btn = document.getElementById('installBtn');
+  const text = document.getElementById('installBannerText');
+
+  if (isStandalone() || localStorage.getItem('install_banner_closed')) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  // 显示横幅
+  banner.classList.remove('hidden');
+
+  if (isLocalFile) {
+    // 本地文件
+    text.textContent = '🔗 部署到网上后就能安装到桌面';
+    btn.textContent = '如何部署';
+    return;
+  }
+
+  // 在线模式 — 区分 iOS 和 Android
+  if (isIOS) {
+    // iOS: 不支持 beforeinstallprompt，教用户手动操作
+    text.textContent = '📲 点浏览器底部「分享」→「添加到主屏幕」';
+    btn.textContent = '查看教程';
+  } else if (deferredPrompt) {
+    // Android Chrome: 原生安装已就绪
+    text.textContent = '📲 一键安装到手机桌面，像App一样！';
+    btn.textContent = '一键安装';
+  } else {
+    // Android 但 beforeinstallprompt 还没触发（首次访问）
+    text.textContent = '📲 安装到手机桌面，像App一样使用';
+    btn.textContent = '安装指南';
+  }
+}
+
+// 点击安装按钮
+async function handleInstall() {
+  if (isLocalFile) {
+    showConfirm(
+      '你打开的是本地文件，浏览器不支持安装。\n\n👉 把文件上传到 GitHub Pages 后就能一键安装！',
+      () => { hideConfirm(); }
+    );
+    return;
+  }
+
+  if (isIOS) {
+    // iOS 安装引导
+    showConfirm(
+      '🍎 iPhone 安装步骤：\n\n① 点浏览器底部中间的「分享」按钮（方框+箭头）\n② 往下滑，找到「添加到主屏幕」\n③ 点右上角「添加」\n\n✅ 桌面就有图标了！',
+      () => { hideConfirm(); }
+    );
+    return;
+  }
+
+  if (deferredPrompt) {
+    // 原生安装弹窗
+    try {
+      await deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      if (result.outcome === 'accepted') {
+        deferredPrompt = null;
+        document.getElementById('installBanner').classList.add('hidden');
+        showToast('✅ 安装成功！');
+      }
+    } catch (err) {
+      // 降级：显示手动引导
+      showManualGuide();
+    }
+    return;
+  }
+
+  // 首次访问，还没触发 beforeinstallprompt — 显示手动引导
+  showManualGuide();
+}
+
+function showManualGuide() {
+  showConfirm(
+    '📲 手动安装步骤：\n\n① 点浏览器右上角 ⋮（三个点）\n② 选择「添加到主屏幕」或「安装应用」\n③ 确认安装\n\n💡 如果没看到这个选项，多浏览一会儿再试～',
+    () => { hideConfirm(); }
+  );
+}
+
+// 在线模式：主动展示安装横幅（不等 beforeinstallprompt）
+function initInstallBanner() {
+  if (isLocalFile) return; // 本地文件不自动弹
+
+  if (isStandalone() || localStorage.getItem('install_banner_closed')) return;
+
+  // 延迟 2 秒后显示，确保页面加载完
+  setTimeout(() => {
+    updateInstallBanner();
+  }, 2000);
+}
+
+// 页面加载完后初始化
+initInstallBanner();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
