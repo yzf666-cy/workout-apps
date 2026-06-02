@@ -260,6 +260,11 @@
     }
     .install-close:active { background: rgba(255,255,255,0.15); color: #fff; }
 
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 2px 12px rgba(124,58,237,0.4); }
+      50% { box-shadow: 0 2px 24px rgba(124,58,237,0.8), 0 0 40px rgba(59,130,246,0.3); }
+    }
+
     /* ── 备注 ── */
     .note-area { margin-top: 12px; }
     .note-input {
@@ -1115,6 +1120,8 @@ function isStandalone() {
 }
 
 // 核心：更新安装横幅的显示和文字
+let installClicked = false; // 用户是否已经点过安装
+
 function updateInstallBanner() {
   const banner = document.getElementById('installBanner');
   const btn = document.getElementById('installBtn');
@@ -1129,25 +1136,51 @@ function updateInstallBanner() {
   banner.classList.remove('hidden');
 
   if (isLocalFile) {
-    // 本地文件
     text.textContent = '🔗 部署到网上后就能安装到桌面';
     btn.textContent = '如何部署';
     return;
   }
 
-  // 在线模式 — 区分 iOS 和 Android
+  // 在线模式
   if (isIOS) {
-    // iOS: 不支持 beforeinstallprompt，教用户手动操作
+    // iOS 只能用分享菜单安装
     text.textContent = '📲 点浏览器底部「分享」→「添加到主屏幕」';
     btn.textContent = '查看教程';
   } else if (deferredPrompt) {
-    // Android Chrome: 原生安装已就绪
-    text.textContent = '📲 一键安装到手机桌面，像App一样！';
-    btn.textContent = '一键安装';
+    // 原生安装已就绪！
+    text.textContent = '📲 点击下方按钮，直接安装到桌面';
+    btn.textContent = '📥 一键安装';
+    btn.style.animation = 'pulse 1.5s infinite';
+    // 如果用户之前点过安装但当时没就绪，现在自动弹
+    if (installClicked) {
+      installClicked = false;
+      triggerInstall();
+    }
   } else {
-    // Android 但 beforeinstallprompt 还没触发（首次访问）
+    // 浏览器还没准备好，但很快就会好（一般30秒内）
     text.textContent = '📲 安装到手机桌面，像App一样使用';
-    btn.textContent = '安装指南';
+    btn.textContent = '📥 一键安装';
+  }
+}
+
+// 真正触发原生安装
+async function triggerInstall() {
+  if (!deferredPrompt) return;
+
+  try {
+    await deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      deferredPrompt = null;
+      document.getElementById('installBanner').classList.add('hidden');
+      showToast('✅ 安装成功！');
+    }
+  } catch (err) {
+    // 降级
+    showConfirm(
+      '📲 请手动操作：\n\n点浏览器右上角 ⋮（三个点）→「添加到主屏幕」或「安装应用」',
+      () => { hideConfirm(); }
+    );
   }
 }
 
@@ -1155,14 +1188,13 @@ function updateInstallBanner() {
 async function handleInstall() {
   if (isLocalFile) {
     showConfirm(
-      '你打开的是本地文件，浏览器不支持安装。\n\n👉 把文件上传到 GitHub Pages 后就能一键安装！',
+      '你打开的是本地文件，浏览器不支持安装。\n\n👉 把文件上传到 Gitee Pages 后就能一键安装！',
       () => { hideConfirm(); }
     );
     return;
   }
 
   if (isIOS) {
-    // iOS 安装引导
     showConfirm(
       '🍎 iPhone 安装步骤：\n\n① 点浏览器底部中间的「分享」按钮（方框+箭头）\n② 往下滑，找到「添加到主屏幕」\n③ 点右上角「添加」\n\n✅ 桌面就有图标了！',
       () => { hideConfirm(); }
@@ -1171,31 +1203,26 @@ async function handleInstall() {
   }
 
   if (deferredPrompt) {
-    // 原生安装弹窗
-    try {
-      await deferredPrompt.prompt();
-      const result = await deferredPrompt.userChoice;
-      if (result.outcome === 'accepted') {
-        deferredPrompt = null;
-        document.getElementById('installBanner').classList.add('hidden');
-        showToast('✅ 安装成功！');
-      }
-    } catch (err) {
-      // 降级：显示手动引导
-      showManualGuide();
-    }
+    // 原生安装弹窗，直接弹！
+    triggerInstall();
     return;
   }
 
-  // 首次访问，还没触发 beforeinstallprompt — 显示手动引导
-  showManualGuide();
-}
-
-function showManualGuide() {
-  showConfirm(
-    '📲 手动安装步骤：\n\n① 点浏览器右上角 ⋮（三个点）\n② 选择「添加到主屏幕」或「安装应用」\n③ 确认安装\n\n💡 如果没看到这个选项，多浏览一会儿再试～',
-    () => { hideConfirm(); }
-  );
+  // 首次访问，浏览器还没准备好 → 让用户等一下，马上就好
+  installClicked = true;
+  showToast('⏳ 正准备安装，请稍后再点一次按钮...');
+  // 通常 beforeinstallprompt 会在浏览几秒后触发，
+  // 一旦触发，updateInstallBanner 检测到 installClicked=true 会自动弹
+  // 同时 5 秒后如果还没好，再提示
+  setTimeout(() => {
+    if (deferredPrompt) {
+      installClicked = false;
+      triggerInstall();
+    } else if (installClicked) {
+      installClicked = false;
+      showToast('💡 再浏览一下页面，然后重新点安装按钮');
+    }
+  }, 5000);
 }
 
 // 在线模式：主动展示安装横幅（不等 beforeinstallprompt）
