@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>运动记录</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --card: #141414;
+      --card-hover: #1c1c1c;
+      --border: #222;
+      --text: #fff;
+      --text-secondary: #999;
+      --text-muted: #666;
+      --gradient-primary: linear-gradient(135deg, #7c3aed, #3b82f6);
+      --gradient-success: linear-gradient(135deg, #10b981, #06b6d4);
+      --gradient-danger: linear-gradient(135deg, #ef4444, #f97316);
+      --chest: #ef4444;
+      --back: #f59e0b;
+      --legs: #10b981;
+      --shoulder: #3b82f6;
+      --arms: #8b5cf6;
+      --core: #ec4899;
+      --cardio: #06b6d4;
+      --yoga: #84cc16;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --safe-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      padding-bottom: 100px;
+    }
+
+    /* ── 顶部区域 ── */
+    .header {
+      padding: 20px 16px 8px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+    }
+
+    .date-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 4px;
+    }
+    .date-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .date-btn:active { background: var(--card-hover); transform: scale(0.93); }
+    .date-display {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-align: center;
+      min-width: 140px;
+      cursor: pointer;
+    }
+
+    .stats-mini {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 6px;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-size: 1.1rem;
+      font-weight: 800;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* ── 内容区 ── */
+    .content { padding: 0 14px; }
+
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 16px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── 训练卡片 ── */
+    .exercise-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .exercise-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      position: relative;
+      animation: slideIn 0.3s ease;
+      transition: all 0.2s;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .exercise-card:active { background: var(--card-hover); }
+
+    .ex-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .ex-name {
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ex-cat-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ex-delete {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .ex-delete:active { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+    .ex-details {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+    .ex-detail-val { color: var(--text); font-weight: 600; }
+
+    /* ── 按钮 ── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px 24px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #fff;
+      width: 100%;
+      letter-spacing: 0.5px;
+    }
+    .btn:active { transform: scale(0.97); opacity: 0.9; }
+    .btn-primary { background: var(--gradient-primary); box-shadow: 0 4px 20px rgba(124,58,237,0.3); }
+    .btn-outline {
+      background: transparent;
+      border: 2px dashed var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-outline:active { border-color: #7c3aed; color: #a78bfa; }
+    .btn-save {
+      background: var(--gradient-success);
+      box-shadow: 0 4px 20px rgba(16,185,129,0.3);
+      margin-top: 16px;
+    }
+
+    /* ── 备注 ── */
+    .note-area { margin-top: 12px; }
+    .note-input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: none;
+      min-height: 60px;
+      transition: border 0.2s;
+    }
+    .note-input:focus { outline: none; border-color: #7c3aed; }
+    .note-input::placeholder { color: var(--text-muted); }
+
+    /* ── 底部 Tab ── */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      display: flex;
+      background: rgba(10,10,10,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      padding-bottom: var(--safe-bottom);
+      z-index: 10;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .tab-btn .tab-icon { font-size: 1.3rem; }
+    .tab-btn.active { color: #a78bfa; }
+
+    /* ── 空状态 ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 12px; opacity: 0.5; }
+    .empty-text { font-size: 0.95rem; }
+
+    /* ── 历史列表 ── */
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+    .history-day {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .history-day-header {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .history-day-header:active { background: var(--card-hover); }
+    .history-date { font-weight: 700; font-size: 0.95rem; }
+    .history-count {
+      background: rgba(124,58,237,0.15);
+      color: #a78bfa;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .history-expand {
+      padding: 0 16px 14px;
+      display: none;
+    }
+    .history-day.open .history-expand { display: block; }
+    .history-ex-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .history-ex-item:last-child { border-bottom: none; }
+    .history-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* ── 弹窗 ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: #1a1a1a;
+      width: 100%;
+      max-height: 90vh;
+      max-height: 90dvh;
+      border-radius: 20px 20px 0 0;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease;
+      padding-bottom: var(--safe-bottom);
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 18px 12px;
+      position: sticky;
+      top: 0;
+      background: #1a1a1a;
+      z-index: 1;
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 700; }
+    .modal-close {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:active { background: rgba(255,255,255,0.12); }
+    .modal-body { padding: 0 18px 20px; }
+
+    /* ── 分类Tab ── */
+    .cat-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 0 12px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      flex-wrap: nowrap;
+    }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .cat-tab.cat-chest.active { background: var(--chest); color: #fff; border-color: var(--chest); }
+    .cat-tab.cat-back.active { background: var(--back); color: #000; border-color: var(--back); }
+    .cat-tab.cat-legs.active { background: var(--legs); color: #000; border-color: var(--legs); }
+    .cat-tab.cat-shoulder.active { background: var(--shoulder); color: #fff; border-color: var(--shoulder); }
+    .cat-tab.cat-arms.active { background: var(--arms); color: #fff; border-color: var(--arms); }
+    .cat-tab.cat-core.active { background: var(--core); color: #fff; border-color: var(--core); }
+    .cat-tab.cat-cardio.active { background: var(--cardio); color: #000; border-color: var(--cardio); }
+    .cat-tab.cat-yoga.active { background: var(--yoga); color: #000; border-color: var(--yoga); }
+
+    /* ── 动作选择网格 ── */
+    .ex-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .ex-option {
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .ex-option:active { transform: scale(0.96); }
+    .ex-option.selected {
+      border-color: #7c3aed;
+      background: rgba(124,58,237,0.12);
+      color: #c4b5fd;
+    }
+
+    /* ── 自定义输入 ── */
+    .custom-ex-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #0a0a0a;
+      color: var(--text);
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+      transition: border 0.2s;
+    }
+    .custom-ex-input:focus { outline: none; border-color: #3b82f6; }
+    .custom-ex-input::placeholder { color: var(--text-muted); }
+
+    /* ── 参数输入行 ── */
+    .param-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .param-field label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .param-field input {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #0a0a0a;
+      color: var(--text);
+      font-size: 1rem;
+      text-align: center;
+      transition: border 0.2s;
+    }
+    .param-field input:focus { outline: none; border-color: #3b82f6; }
+    .param-field input::placeholder { color: var(--text-muted); font-size: 0.8rem; }
+
+    /* ── Toast提示 ── */
+    .toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gradient-success);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      z-index: 200;
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 1.5s forwards;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+
+    /* ── 确认删除弹窗 ── */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .confirm-box {
+      background: #1a1a1a;
+      border-radius: var(--radius);
+      padding: 24px 20px 20px;
+      width: calc(100% - 48px);
+      max-width: 320px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .confirm-title { font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
+    .confirm-desc { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .confirm-actions .btn { padding: 12px; font-size: 0.85rem; }
+
+    /* ── 滚动条 ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .hidden { display: none !important; }
+
+    .today-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      margin-right: 6px;
+      box-shadow: 0 0 8px rgba(16,185,129,0.6);
+    }
+  </style>
+</head>
+<body>
+
+<!-- 顶部区域 -->
+<div class="header">
+  <div class="date-row">
+    <button class="date-btn" id="datePrev">◀</button>
+    <div class="date-display" id="dateDisplay">2026/06/02</div>
+    <button class="date-btn" id="dateNext">▶</button>
+  </div>
+  <div class="stats-mini">
+    <div class="stat-item">
+      <div class="stat-num" id="statDays">0</div>
+      <div class="stat-label">累计训练天数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">累计动作数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statWeek">0</div>
+      <div class="stat-label">本周训练天数</div>
+    </div>
+  </div>
+</div>
+
+<!-- 内容区 - 今日视图 -->
+<div class="content" id="viewToday">
+  <div class="section-title"><span class="today-dot"></span> 今日训练</div>
+  <div class="exercise-list" id="todayExercises"></div>
+  <div class="empty-state" id="todayEmpty">
+    <div class="empty-icon">🏋️</div>
+    <div class="empty-text">今天还没有记录训练<br>点击下方按钮开始吧！</div>
+  </div>
+
+  <button class="btn btn-outline" id="btnAddExercise" style="margin-top:14px;">
+    ＋ 添加训练动作
+  </button>
+
+  <div class="note-area">
+    <textarea class="note-input" id="noteInput" placeholder="📝 今日备注（训练感受、状态...）"></textarea>
+  </div>
+
+  <button class="btn btn-save" id="btnSave">💾 保存记录</button>
+</div>
+
+<!-- 内容区 - 历史视图 -->
+<div class="content hidden" id="viewHistory">
+  <div class="section-title">📅 历史记录</div>
+  <div class="history-list" id="historyList"></div>
+  <div class="empty-state hidden" id="historyEmpty">
+    <div class="empty-icon">📭</div>
+    <div class="empty-text">还没有训练记录<br>开始你的第一次训练吧！</div>
+  </div>
+</div>
+
+<!-- 底部 Tab -->
+<div class="bottom-bar">
+  <button class="tab-btn active" id="tabToday">
+    <span class="tab-icon">📋</span> 今日
+  </button>
+  <button class="tab-btn" id="tabHistory">
+    <span class="tab-icon">📅</span> 历史
+  </button>
+</div>
+
+<!-- 添加动作弹窗 -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">选择训练动作</span>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cat-tabs" id="catTabs"></div>
+      <div class="ex-grid" id="exGrid"></div>
+      <input type="text" class="custom-ex-input" id="customExInput" placeholder="✏️ 或输入自定义动作名称...">
+      <div class="param-row">
+        <div class="param-field">
+          <label>组数</label>
+          <input type="number" id="paramSets" placeholder="0" min="0" inputmode="numeric">
+        </div>
+        <div class="param-field">
+          <label>次数</label>
+          <input type="number" id="paramReps" placeholder="0" min="0" inputmode="numeric">
+        </div>
+        <div class="param-field">
+          <label>重量 (kg)</label>
+          <input type="number" id="paramWeight" placeholder="0" min="0" step="0.5" inputmode="decimal">
+        </div>
+        <div class="param-field">
+          <label>时长 (分钟)</label>
+          <input type="number" id="paramDuration" placeholder="0" min="0" inputmode="numeric">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btnConfirmAdd">✅ 添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast hidden" id="toast"></div>
+
+<!-- 确认删除弹窗 -->
+<div class="confirm-overlay hidden" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">删除确认</div>
+    <div class="confirm-desc" id="confirmDesc">确定要删除这个动作吗？</div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" id="confirmCancel">取消</button>
+      <button class="btn" id="confirmOk" style="background:var(--gradient-danger);">删除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  运动记录 App
+// ============================================================
+
+const EXERCISE_DB = {
+  chest: {
+    name: '胸部', color: '#ef4444', cssClass: 'cat-chest', icon: '🏋️',
+    exercises: ['杠铃卧推','哑铃卧推','上斜卧推','下斜卧推','哑铃飞鸟','绳索夹胸','俯卧撑','器械推胸']
+  },
+  back: {
+    name: '背部', color: '#f59e0b', cssClass: 'cat-back', icon: '🔙',
+    exercises: ['引体向上','杠铃划船','哑铃划船','高位下拉','坐姿划船','硬拉','单臂哑铃划船','T杠划船']
+  },
+  legs: {
+    name: '腿部', color: '#10b981', cssClass: 'cat-legs', icon: '🦵',
+    exercises: ['杠铃深蹲','腿举','腿弯举','腿伸展','弓步蹲','罗马尼亚硬拉','保加利亚分腿蹲','哈克深蹲']
+  },
+  shoulder: {
+    name: '肩部', color: '#3b82f6', cssClass: 'cat-shoulder', icon: '💪',
+    exercises: ['哑铃推举','侧平举','前平举','面拉','阿诺德推举','杠铃推举','俯身飞鸟','直立划船']
+  },
+  arms: {
+    name: '手臂', color: '#8b5cf6', cssClass: 'cat-arms', icon: '💪',
+    exercises: ['二头弯举','锤式弯举','三头下压','窄距卧推','臂屈伸','集中弯举','仰卧臂屈伸','绳索弯举']
+  },
+  core: {
+    name: '核心', color: '#ec4899', cssClass: 'cat-core', icon: '🎯',
+    exercises: ['卷腹','平板支撑','悬垂举腿','俄罗斯转体','仰卧起坐','仰卧抬腿','侧平板','死虫式']
+  },
+  cardio: {
+    name: '有氧', color: '#06b6d4', cssClass: 'cat-cardio', icon: '🏃',
+    exercises: ['跑步','游泳','跳绳','骑行','椭圆机','划船机','爬楼梯','快走']
+  },
+  yoga: {
+    name: '瑜伽拉伸', color: '#84cc16', cssClass: 'cat-yoga', icon: '🧘',
+    exercises: ['下犬式','猫牛式','婴儿式','鸽式','腿筋拉伸','蝴蝶式','眼镜蛇式','三角式']
+  }
+};
+
+const CAT_KEYS = Object.keys(EXERCISE_DB);
+const STORAGE_KEY = 'workout_records_v1';
+
+let currentDate = getTodayStr();
+let selectedDate = getTodayStr();
+let allData = {};
+let todayExercises = [];
+let todayNote = '';
+let selectedCat = 'chest';
+let selectedExName = '';
+let confirmCallback = null;
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDate(dateStr) {
+  const [y,m,d] = dateStr.split('-');
+  const today = getTodayStr();
+  const yesterday = getDateOffset(-1);
+  if (dateStr === today) return '今天';
+  if (dateStr === yesterday) return '昨天';
+  return `${y}/${m}/${d}`;
+}
+
+function getDateOffset(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getWeekStart() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function loadAllData() {
+  try { allData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch (e) { allData = {}; }
+}
+
+function saveAllData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+}
+
+function getDayData(dateStr) {
+  return allData[dateStr] || { exercises: [], note: '' };
+}
+
+function loadDay(dateStr) {
+  const d = getDayData(dateStr);
+  todayExercises = JSON.parse(JSON.stringify(d.exercises));
+  todayNote = d.note || '';
+}
+
+function saveDay(dateStr) {
+  allData[dateStr] = { exercises: JSON.parse(JSON.stringify(todayExercises)), note: todayNote };
+  saveAllData();
+}
+
+function getStats() {
+  const dates = Object.keys(allData).filter(d => allData[d] && allData[d].exercises && allData[d].exercises.length > 0);
+  let totalExercises = 0;
+  dates.forEach(d => { totalExercises += allData[d].exercises.length; });
+  const weekStart = getWeekStart();
+  let weekDays = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (allData[ds] && allData[ds].exercises && allData[ds].exercises.length > 0) weekDays++;
+  }
+  return { totalDays: dates.length, totalExercises, weekDays };
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = '';
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => el.classList.add('hidden'), 2000);
+}
+
+function showConfirm(desc, cb) {
+  document.getElementById('confirmDesc').textContent = desc;
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+  confirmCallback = cb;
+}
+
+function hideConfirm() {
+  document.getElementById('confirmOverlay').classList.add('hidden');
+  confirmCallback = null;
+}
+
+function openModal() {
+  selectedCat = 'chest';
+  selectedExName = '';
+  document.getElementById('customExInput').value = '';
+  document.getElementById('paramSets').value = '';
+  document.getElementById('paramReps').value = '';
+  document.getElementById('paramWeight').value = '';
+  document.getElementById('paramDuration').value = '';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  renderCatTabs();
+  renderExGrid();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+}
+
+function renderCatTabs() {
+  document.getElementById('catTabs').innerHTML = CAT_KEYS.map(k => {
+    const cat = EXERCISE_DB[k];
+    const activeCls = k === selectedCat ? ' active ' + cat.cssClass : '';
+    return `<button class="cat-tab ${cat.cssClass}${activeCls}" data-cat="${k}">${cat.icon} ${cat.name}</button>`;
+  }).join('');
+}
+
+function renderExGrid() {
+  const cat = EXERCISE_DB[selectedCat];
+  document.getElementById('exGrid').innerHTML = cat.exercises.map(name => {
+    const selCls = selectedExName === name ? ' selected' : '';
+    return `<button class="ex-option${selCls}" data-name="${name}">${name}</button>`;
+  }).join('');
+}
+
+function updateStats() {
+  const s = getStats();
+  document.getElementById('statDays').textContent = s.totalDays;
+  document.getElementById('statTotal').textContent = s.totalExercises;
+  document.getElementById('statWeek').textContent = s.weekDays;
+}
+
+function renderToday() {
+  const list = document.getElementById('todayExercises');
+  const empty = document.getElementById('todayEmpty');
+  document.getElementById('dateDisplay').textContent = formatDate(selectedDate);
+  document.getElementById('noteInput').value = todayNote;
+
+  if (todayExercises.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    list.innerHTML = todayExercises.map((ex, idx) => {
+      let catColor = '#666';
+      for (const k of CAT_KEYS) {
+        if (EXERCISE_DB[k].exercises.includes(ex.name)) { catColor = EXERCISE_DB[k].color; break; }
+      }
+      const parts = [];
+      if (ex.sets > 0 && ex.reps > 0) parts.push(`${ex.sets}组 × ${ex.reps}次`);
+      else if (ex.sets > 0) parts.push(`${ex.sets}组`);
+      else if (ex.reps > 0) parts.push(`${ex.reps}次`);
+      if (ex.weight > 0) parts.push(`${ex.weight}kg`);
+      if (ex.duration > 0) parts.push(`${ex.duration}分钟`);
+
+      return `<div class="exercise-card">
+        <div class="ex-top">
+          <span class="ex-name">
+            <span class="ex-cat-dot" style="background:${catColor};box-shadow:0 0 6px ${catColor};"></span>
+            ${ex.name}
+          </span>
+          <button class="ex-delete" data-idx="${idx}">✕</button>
+        </div>
+        <div class="ex-details">${parts.join(' · ') || '未填写详情'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  updateStats();
+  document.getElementById('dateNext').style.visibility = selectedDate >= getTodayStr() ? 'hidden' : 'visible';
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  const dates = Object.keys(allData).filter(d => allData[d] && allData[d].exercises && allData[d].exercises.length > 0).sort().reverse();
+
+  if (dates.length === 0) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
+
+  empty.classList.add('hidden');
+  list.innerHTML = dates.map(d => {
+    const data = allData[d];
+    const exHTML = data.exercises.map(ex => {
+      const parts = [];
+      if (ex.sets > 0 && ex.reps > 0) parts.push(`${ex.sets}组×${ex.reps}次`);
+      else if (ex.sets > 0) parts.push(`${ex.sets}组`);
+      if (ex.weight > 0) parts.push(`${ex.weight}kg`);
+      if (ex.duration > 0) parts.push(`${ex.duration}分钟`);
+      return `<div class="history-ex-item"><span>${ex.name}</span><span style="color:#999;font-size:0.8rem;">${parts.join(' · ') || '未填详情'}</span></div>`;
+    }).join('');
+    const noteHTML = data.note ? `<div class="history-note">📝 ${data.note}</div>` : '';
+    return `<div class="history-day"><div class="history-day-header"><span class="history-date">${formatDate(d)}</span><span class="history-count">${data.exercises.length} 个动作</span></div><div class="history-expand">${exHTML}${noteHTML}</div></div>`;
+  }).join('');
+}
+
+function switchView(view) {
+  document.getElementById('viewToday').classList.toggle('hidden', view !== 'today');
+  document.getElementById('viewHistory').classList.toggle('hidden', view !== 'history');
+  document.getElementById('tabToday').classList.toggle('active', view === 'today');
+  document.getElementById('tabHistory').classList.toggle('active', view === 'history');
+  if (view === 'today') { loadDay(selectedDate); renderToday(); }
+  else { renderHistory(); }
+}
+
+// ── 初始化 ──
+function init() {
+  loadAllData();
+  loadDay(selectedDate);
+  renderToday();
+
+  document.getElementById('datePrev').addEventListener('click', () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() - 1);
+    selectedDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    loadDay(selectedDate);
+    renderToday();
+  });
+
+  document.getElementById('dateNext').addEventListener('click', () => {
+    if (selectedDate >= getTodayStr()) return;
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    selectedDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    loadDay(selectedDate);
+    renderToday();
+  });
+
+  document.getElementById('dateDisplay').addEventListener('click', () => {
+    selectedDate = getTodayStr();
+    loadDay(selectedDate);
+    renderToday();
+  });
+
+  document.getElementById('btnAddExercise').addEventListener('click', openModal);
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  document.getElementById('catTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.cat-tab');
+    if (!tab) return;
+    selectedCat = tab.dataset.cat;
+    selectedExName = '';
+    document.getElementById('customExInput').value = '';
+    renderCatTabs();
+    renderExGrid();
+  });
+
+  document.getElementById('exGrid').addEventListener('click', (e) => {
+    const btn = e.target.closest('.ex-option');
+    if (!btn) return;
+    selectedExName = btn.dataset.name;
+    document.getElementById('customExInput').value = '';
+    renderExGrid();
+  });
+
+  document.getElementById('customExInput').addEventListener('input', () => {
+    if (document.getElementById('customExInput').value.trim()) {
+      selectedExName = '';
+      renderExGrid();
+    }
+  });
+
+  document.getElementById('btnConfirmAdd').addEventListener('click', () => {
+    const customName = document.getElementById('customExInput').value.trim();
+    const exName = selectedExName || customName;
+    if (!exName) { showToast('⚠️ 请选择动作或输入名称'); return; }
+    const sets = parseInt(document.getElementById('paramSets').value) || 0;
+    const reps = parseInt(document.getElementById('paramReps').value) || 0;
+    const weight = parseFloat(document.getElementById('paramWeight').value) || 0;
+    const duration = parseInt(document.getElementById('paramDuration').value) || 0;
+    todayExercises.push({ name: exName, sets, reps, weight, duration });
+    closeModal();
+    renderToday();
+    showToast(`✅ 已添加：${exName}`);
+  });
+
+  document.getElementById('todayExercises').addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.ex-delete');
+    if (!delBtn) return;
+    const idx = parseInt(delBtn.dataset.idx);
+    const ex = todayExercises[idx];
+    showConfirm(`确定要删除「${ex.name}」吗？`, () => {
+      todayExercises.splice(idx, 1);
+      renderToday();
+      hideConfirm();
+      showToast('已删除');
+    });
+  });
+
+  document.getElementById('noteInput').addEventListener('input', () => {
+    todayNote = document.getElementById('noteInput').value;
+  });
+
+  document.getElementById('btnSave').addEventListener('click', () => {
+    todayNote = document.getElementById('noteInput').value;
+    saveDay(selectedDate);
+    showToast('💾 已保存！');
+    updateStats();
+  });
+
+  document.getElementById('tabToday').addEventListener('click', () => switchView('today'));
+  document.getElementById('tabHistory').addEventListener('click', () => switchView('history'));
+
+  document.getElementById('historyList').addEventListener('click', (e) => {
+    const header = e.target.closest('.history-day-header');
+    if (!header) return;
+    header.parentElement.classList.toggle('open');
+  });
+
+  document.getElementById('confirmCancel').addEventListener('click', hideConfirm);
+  document.getElementById('confirmOk').addEventListener('click', () => {
+    if (confirmCallback) confirmCallback();
+  });
+  document.getElementById('confirmOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) hideConfirm();
+  });
+
+  updateStats();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
